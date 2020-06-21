@@ -1,4 +1,4 @@
-from math import log, log10
+from math import log, log10, log2
 import numpy as np
 from decimal import Decimal as d, getcontext
 from sys import stderr
@@ -68,19 +68,22 @@ def check_range(n, start=1, pc_step=1, offset=10, verbose=False):
     start = round(start, round_prec)
     pc_ii = np.arange(start, round(n+pc_step, round_prec), pc_step).tolist()
     pc_ii = list(map(lambda x: round(x, round_prec), pc_ii))
-    print(f"--> pc_ii: {pc_ii}")
+    if verbose:
+        print(f"--> pc_ii: {pc_ii}")
     for pc_i in pc_ii:
         if verbose:
             print(f"--> Checking {pc_i}", file=stderr)
         b = get_ln2_differences(offset=offset, pc=pc_i, pd=dp, check_rep=True, v=False)
         if b:
             success_range = (round(pc_i - pc_step, round_prec), pc_i)
-            result_check_message(check_bool=b, final_range=success_range)
-            a = get_ln2_differences(offset=offset, pc=pc_i, pd=dp, v=True)
+            if verbose:
+                result_check_message(check_bool=b, final_range=success_range)
+            a = get_ln2_differences(offset=offset, pc=pc_i, pd=dp, v=verbose)
             return a, b, success_range
     failure_range = (start, n)
-    result_check_message(check_bool=False, final_range=failure_range)
-    a = get_ln2_differences(offset=10, pc=pc_i, pd=getcontext().prec, v=True)
+    if verbose:
+        result_check_message(check_bool=False, final_range=failure_range)
+    a = get_ln2_differences(offset=10, pc=pc_i, pd=getcontext().prec, v=verbose)
     return a, b, failure_range
 
 def recursively_check_range(n, max_depth=8, start=1, pc_step=1, offset=10, verbose=False):
@@ -88,79 +91,24 @@ def recursively_check_range(n, max_depth=8, start=1, pc_step=1, offset=10, verbo
     if b:
         new_d = max_depth - 1
         if new_d < 1:
-            print(f"Reached depth {new_d}")
+            if verbose:
+                print(f"Reached depth {new_d}")
             return a, b, r
         else:
-            print(f"Current depth is {new_d}")
+            if verbose:
+                print(f"Current depth is {new_d}")
             new_start, new_n = r
             new_step = pc_step / 10
             return recursively_check_range(n=new_n, max_depth=new_d, start=new_start,
                                     pc_step = new_step, offset=offset, verbose=verbose)
 
-# # We know it's somewhere between 1 and 8 for floating points (override_decimal = True)
-# for i in range(1,8):
-#     dec_init = i
-#     pc_dec_init = dec_init
-#     a = get_ln2_differences(offset=10, pc=pc_dec_init, pd=getcontext().prec, check_rep=True, v=False)
-#     if a:
-#         a = get_ln2_differences(offset=10, pc=pc_dec_init, pd=getcontext().prec, check_rep=True)
-#         break
-# 
-# # value is 5
-# 
-# # We know it's somewhere between 4 and 5 so check 4.01 to 4.99
-# for j in range(1,100):
-#     hun = j / 100
-#     pc_dec_fl_two = pc_dec_init - 1 + hun
-#     b = get_ln2_differences(offset=10, pc=pc_dec_fl_two, pd=getcontext().prec, check_rep=True, v=False)
-#     if b:
-#         b = get_ln2_differences(offset=10, pc=pc_dec_fl_two, pd=getcontext().prec, check_rep=True)
-#         break
-# 
-# # value is 4.32
-# 
-# # We know it's somewhere between 4.31 and 4.32
-# 
-# # 10**4.31 exactly is a bit above 2**14
-# 
-# >>> log2(10**4.31)
-# 14.31751008896453
-# 
-# #########################################################################################
-# 
-# # We know it's somewhere between 8 and 8.5 for 28 fixed point (override_decimal = False)
-# for i in range(1,50):
-#     dec = i / 100
-#     pc_dec = 8 + dec
-#     a = get_ln2_differences(offset=10, pc=pc_dec, pd=getcontext().prec, check_rep=True, v=False)
-#     if a:
-#         a = get_ln2_differences(offset=10, pc=pc_dec, pd=getcontext().prec, check_rep=True)
-#         break
-# 
-# # value is 8.36
-# 
-# # We know it's somewhere between 8.35 and 8.36
-# for j in range(1,100):
-#     thou = j / 10_000
-#     pc_dec_two = pc_dec - 0.01 + thou
-#     b = get_ln2_differences(offset=10, pc=pc_dec_two, pd=getcontext().prec, check_rep=True, v=False)
-#     if b:
-#         b = get_ln2_differences(offset=10, pc=pc_dec_two, pd=getcontext().prec, check_rep=True)
-#         break
-# 
-# >>> pc_dec_two
-# 8.3501
-# >>> get_ln2_differences(offset=10, pc=8.35, pd=getcontext().prec, check_rep=True, v=False)
-# False
-# >>> get_ln2_differences(offset=10, pc=8.3501, pd=getcontext().prec, check_rep=True, v=False)
-# True
-# >>> get_ln2_differences(offset=10, pc=8.35001, pd=getcontext().prec, check_rep=True, v=False)
-# True
-# >>> get_ln2_differences(offset=10, pc=8.350001, pd=getcontext().prec, check_rep=True, v=False)
-# True
-# >>> get_ln2_differences(offset=10, pc=8.3500001, pd=getcontext().prec, check_rep=True, v=False)
-# True
-# 
-# # 10**9.35 exactly is a little above 2**31
-# >>> log2(10**9.35)
-# 31.060027687196836
+def get_max_ps_elems(dec_prec=getcontext().prec, depth=8):
+    getcontext().prec = dec_prec
+    a, b, r = recursively_check_range(10+dec_prec, max_depth=depth, verbose=False)
+    if b:
+        lower_bound = 10**(r[0] + 1)
+        max_ps_indexable_n_elems = log2(lower_bound)
+        return max_ps_indexable_n_elems
+    else:
+        result_check_message(check_bool=b, final_range=r)
+        return
