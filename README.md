@@ -21,13 +21,7 @@ the maximum _n_ at that particular fixed point decimal precision.
 
 The sequence above tends to a limit, and this limit is (𝒍𝒏2).
 
-```py
-log(2)
-```
-⇣
-```STDOUT
-0.6931471805599453
-```
+- `log(2)` = `0.6931471805599453`
 
 Here's a simple version of part of `div_frac.py`'s function `get_ln2_difference`:
 
@@ -45,7 +39,7 @@ def recips(n):
     return sum_list
 ```
 
-If we try `recips(20)` (and `round` the result to 3 decimal places) we get:
+If we try `recips(20)` we get the values it tends to for _n_ = 20
 
 ```py
 [round(x, 3) for x in recips(20)]
@@ -56,24 +50,59 @@ If we try `recips(20)` (and `round` the result to 3 decimal places) we get:
 0.663, 0.722, 0.666, 0.719, 0.669]
 ```
 
-Going further,
+You can see how the values approach the limit of `log(2)` = `0.6931`, alternating between being
+above and below the limit for consecutive values in the sequence:
+
+Going further, to _n_ = 100, we can then take the difference from the limit to show that the
+difference is decreasing
 
 ```py
-[round(x, 5) for x in recips(100)][-6:]
+reciprocal_sums = [round(x, 5) for x in recips(100)][-6:]
+print(reciprocal_sums)
+
+ln2_differences = [log(2) - x for x in reciprocal_sums]
+rounded_ln2_diffs = [round(x, 5) for x in ln2_differences]
+print(rounded_ln2_diffs)
 ```
 ⇣
 ```STDOUT
 [0.69838, 0.68797, 0.69828, 0.68807, 0.69817, 0.68817]
+[-0.00523, 0.00518, -0.00513, 0.00508, -0.00502, 0.00498]
 ```
+
+- The signs clearly alternate
+- The final 3 digits are: `523, 518, 513, 508, 502, 498`
+
+It's clear that taking the absolute difference gives a monotonically decreasing sequence.
 
 - Because it tends to this limit, we could go to infinite decimal precision and always find some
   difference: it would just become a smaller and smaller difference.
-- Because the sequence has terms of alternating sign, the final term decides the sign of the sum.
-  Therefore, to compare this smaller-and-smaller difference, we need to compare a positive and a
-  negative value
+- Because the sequence has terms of alternating sign, the final term decides the sign of the
+  difference between the sum and the limit (if the final sign is negative then so too will be the
+  sign of the difference).
 
-is on the order of 10⁵, log₂ of which is max. 19 (so can index a powerset of at
-most 19 items) 
+**Q**: What happens when the computer representation of the decimal number "runs out of precision" to
+represent the sum of reciprocals distinctly from the preceding sum of reciprocals?
+
+**A**: The sums become the same: the sequence becomes repeating. With one caveat: because of the
+nature of the convergence to the limit, alternating between above and below that limit, it's often
+only visible when you compare next-but-one values in the sequence.
+
+Two equivalent ways to check this are:
+
+- Compare the next-but-one values in the sequence of sums of reciprocals
+  - it's repeating when the values are the same
+  - it's repeating when the differences contain 0
+
+Note that the latter of these is _not_ the same as checking the difference between consecutive
+values (which could show different values even if next-but-one are repeating).
+
+---
+
+Further description TBC
+
+It turns out that the value of _n_ at which this happens is on the order of 10⁵, log₂ of which is
+max. 19 (so can index a powerset of at most 19 items) 
 
 ```
 1/n - 1/(n+2)
@@ -81,7 +110,15 @@ most 19 items)
 
 ---
 
-Results from further on (description TBC)
+With this in mind, we can examine where that limit is in the two cases:
+
+- Floating point using `override_decimal=False`
+  - I'm not actually sure how much precision you can say floats have?
+
+- Fixed point using `override_decimal=True`
+  - Specifically here I will look at the default of 28 digit precision fixed point decimals
+  - I originally thought this was the maximum, but in fact you can get arbitrarily many
+    units of precision, all that's left to do is to find the associated maximum `n`
 
 We know it's somewhere between 1 and 8 for floating points `(override_decimal = True)`
 
