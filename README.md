@@ -97,6 +97,28 @@ Two equivalent ways to check this are:
 Note that the latter of these is _not_ the same as checking the difference between consecutive
 values (which could show different values even if next-but-one are repeating).
 
+In the function `get_ln2_differences`, I actually check all three: consecutive, odd, and even.
+`numpy.ediff1d` gives the list of differences between consecutive values, which can be paired with
+`[::2]` to refer to consecutive differences betweeen every next-but-one value:
+
+```py
+if check_rep:
+    diffs_consec = np.ediff1d(arr[:,1])
+    diffs_even = np.ediff1d(arr[:,1][::2])
+    diffs_odd = np.ediff1d(arr[1:,1][::2])
+    checked = 0 in np.hstack([diffs_consec, diffs_even, diffs_odd])
+```
+
+As its name suggests, the function `get_ln2_differences` returns these lists, and if passed
+`check_rep=True` it will also perform the three checks above and return the boolean `True`
+if the sequence becomes repeating or `False` if the sequence does not become repeating.
+
+I built a range checking function on top of this, and then a recursive range checking function on
+top of that, so you can specify a maximum _n_, check every integer up to that, then 'drill down'
+recursively when you find the subrange containing the correct value.
+
+Below are some examples I worked out manually to demonstrate the logic behind the calculations.
+
 ---
 
 Further description TBC
